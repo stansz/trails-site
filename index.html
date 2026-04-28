@@ -151,19 +151,22 @@ function getSAC(seg) {
   return null;
 }
 
+var ALL_KEYS = SAC_STYLES.map(function(s) { return s.key; }).concat(['_no_sac_']);
+
 function buildLegend() {
   diffState = {};
   var html = '';
   html += '<div class="legend-section">Difficulty</div>';
-  SAC_STYLES.forEach(function(s) {
-    diffState[s.key] = true;
-    html += '<div class="legend-item" onclick="toggleDifficulty(\'' + s.key + '\')" id="leg-diff-' + s.key + '">';
-    html += '<div class="legend-swatch thick" style="background:' + s.color + '"></div>';
-    html += '<span class="legend-label">' + s.label + '</span>';
-    html += '<span class="legend-count" id="cnt-diff-' + s.key + '">0</span>';
+  ALL_KEYS.forEach(function(key) {
+    diffState[key] = true;
+    var style = SAC_MAP[key] || { color: '#22c55e', label: 'Unrated' };
+    html += '<div class="legend-item" onclick="toggleDifficulty(\'' + key + '\')" id="leg-diff-' + key + '">';
+    html += '<div class="legend-swatch thick" style="background:' + style.color + '"></div>';
+    html += '<span class="legend-label">' + style.label + '</span>';
+    html += '<span class="legend-count" id="cnt-diff-' + key + '">0</span>';
     html += '</div>';
   });
-  html += '<div class="legend-section" style="margin-top:12px">Layers</div>';
+  html += '<div class="legend-section" style="margin-top:12px">Layers</div;'>
   html += '<div class="legend-item" onclick="toggleUnnamed()" id="leg-unnamed">';
   html += '<div class="legend-swatch" style="background:#94a3b8"></div>';
   html += '<span class="legend-label">All Paths</span>';
@@ -188,7 +191,7 @@ window.toggleUnnamed = function() {
 window.refreshLayerVisibility = function() {
   namedLayer.clearLayers();
   allNamedLines.forEach(function(item) {
-    var visible = !item.sacKey || (diffState[item.sacKey] !== false);
+    var visible = diffState[item.sacKey] !== false;
     if (visible) namedLayer.addLayer(item.line);
   });
 };
@@ -229,7 +232,7 @@ function renderSegments(segments) {
   allNamedLines = [];
   var namedCount = 0, unnamedCount = 0, totalKm = 0;
   var diffCounts = {};
-  SAC_STYLES.forEach(function(s) { diffCounts[s.key] = 0; });
+  ALL_KEYS.forEach(function(k) { diffCounts[k] = 0; });
 
   segments.forEach(function(s) {
     var coords = [];
@@ -249,9 +252,10 @@ function renderSegments(segments) {
       var style = sac || DEFAULT_NAMED;
       var color = style.color;
       if (sac) diffCounts[sac.key] = (diffCounts[sac.key] || 0) + 1;
+      else diffCounts['_no_sac_'] = (diffCounts['_no_sac_'] || 0) + 1;
 
       var line = L.polyline(latlngs, { color: color, weight: 3, opacity: 0.8 });
-      var sacKey = sac ? sac.key : null;
+      var sacKey = sac ? sac.key : '_no_sac_';
       allNamedLines.push({ line: line, sacKey: sacKey });
 
       var popupHtml = '<div class="popup-name">' + esc(s.name) + '</div>';
@@ -274,9 +278,9 @@ function renderSegments(segments) {
   document.getElementById('stat-km').textContent = totalKm.toFixed(1);
   document.getElementById('cnt-unnamed').textContent = unnamedCount;
 
-  SAC_STYLES.forEach(function(s) {
-    var cnt = diffCounts[s.key] || 0;
-    var el = document.getElementById('cnt-diff-' + s.key);
+  ALL_KEYS.forEach(function(key) {
+    var cnt = diffCounts[key] || 0;
+    var el = document.getElementById('cnt-diff-' + key);
     if (el) el.textContent = cnt;
   });
 
