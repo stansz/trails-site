@@ -4,678 +4,294 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>OGS Trails — Hiking Trails Across Canada</title>
-<link rel="icon" href="https://ogsapps.cc/logo.jpg">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="https://cdn.tailwindcss.com"></script>
+<link rel="icon" href="https://ogsapps.cc/logo.jpg">
 <style>
   :root {
-    --bg: #12131a;
-    --card: #1a1d2e;
-    --text: #b0b8c8;
-    --accent: #5a6;
-    --accent-dim: #465;
-    --muted: #6b7280;
-    --border: #2a2d3e;
+    --bg: #f8fafc; --surface: #ffffff; --surface2: #f1f5f9; --border: #e2e8f0;
+    --text: #1e293b; --text2: #64748b; --accent: #22c55e;
+    --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
   }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); height: 100dvh; overflow: hidden; }
-  .leaflet-container { background: #1a1d2e; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: var(--font); background: var(--bg); color: var(--text); height: 100vh; display: flex; flex-direction: column; }
 
-  /* Header */
-  #header { position: fixed; top: 0; left: 0; right: 0; z-index: 1001; background: linear-gradient(180deg, rgba(18,19,26,0.95) 0%, rgba(18,19,26,0.7) 100%); backdrop-filter: blur(8px); padding: 10px 16px; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid var(--border); }
-  #header .back-link { color: var(--accent); text-decoration: none; font-size: 13px; flex-shrink: 0; }
-  #header .back-link:hover { text-decoration: underline; }
-  #header .title { font-size: 18px; font-weight: 700; color: #e0e6f0; white-space: nowrap; }
-  #header .subtitle { font-size: 11px; color: var(--muted); display: none; }
+  .header { display: flex; align-items: center; justify-content: space-between; padding: 8px 16px; background: var(--surface); border-bottom: 1px solid var(--border); z-index: 1000; flex-shrink: 0; }
+  .header h1 { font-size: 16px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+  .header h1 span { color: var(--accent); }
+  .header-links { display: flex; gap: 12px; align-items: center; }
+  .header-links a { color: var(--text2); text-decoration: none; font-size: 13px; }
+  .header-links a:hover { color: var(--text); }
 
-  /* Map */
-  #map { position: fixed; inset: 0; z-index: 0; }
+  #map { flex: 1; z-index: 1; }
 
-  /* Search bar on map — centered top */
-  #search-bar {
-    position: fixed; top: 64px; left: 50%; transform: translateX(-50%); z-index: 1001;
-    display: flex; flex-direction: column; gap: 8px;
-    background: var(--card); border: 1px solid var(--border);
-    border-radius: 10px; padding: 12px;
-    width: 420px; max-width: calc(100vw - 32px);
-    box-shadow: 0 4px 24px rgba(0,0,0,0.5);
-  }
-  #search-bar input, #search-bar select {
-    background: var(--bg); border: 1px solid var(--border); color: var(--text);
-    padding: 8px 12px; border-radius: 6px; font-size: 14px; outline: none;
-  }
-  #search-bar input:focus, #search-bar select:focus { border-color: var(--accent); }
-  #search-bar input::placeholder { color: var(--muted); }
-  #search-bar .row { display: flex; gap: 8px; }
-  #search-bar .row select { flex: 1; }
-  #search-bar button {
-    background: var(--accent); color: #0a0f0a; border: none; padding: 8px 16px;
-    border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer;
-    transition: background 0.15s; white-space: nowrap;
-  }
-  #search-bar button:hover { background: #5b7; }
-  #search-bar button.secondary { background: var(--border); color: var(--text); }
-  #search-bar button.secondary:hover { background: #3a3d4e; }
+  /* Panel */
+  .panel { position: absolute; top: 52px; right: 12px; z-index: 999; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; width: 260px; max-height: calc(100vh - 72px); overflow-y: auto; box-shadow: 0 8px 32px rgba(0,0,0,0.35); }
+  .panel-header { padding: 12px 14px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; background: var(--surface); z-index: 1; }
+  .panel-header h2 { font-size: 14px; font-weight: 600; }
+  .panel-close { background: none; border: none; color: var(--text2); cursor: pointer; font-size: 18px; padding: 0 4px; }
+  .panel-body { padding: 12px 14px; }
 
-  /* Results sidebar (desktop) */
-  #results-panel {
-    position: fixed; left: -420px; top: 64px; bottom: 0; z-index: 1000;
-    width: 380px; max-width: calc(100vw - 32px);
-    background: var(--card); border-right: 1px solid var(--border);
-    transition: left 0.25s ease; display: flex; flex-direction: column;
-    box-shadow: 4px 0 24px rgba(0,0,0,0.3);
-  }
-  #results-panel.open { left: 0; }
-  #results-panel .panel-header {
-    padding: 14px; border-bottom: 1px solid var(--border);
-    display: flex; justify-content: space-between; align-items: center;
-  }
-  #results-panel .panel-header h3 { font-size: 15px; color: #e0e6f0; }
-  #results-panel .panel-header button { background: none; border: none; color: var(--muted); font-size: 20px; cursor: pointer; }
-  #results-panel .results-list { overflow-y: auto; flex: 1; padding: 8px; }
-  .result-card {
-    background: var(--bg); border: 1px solid var(--border); border-radius: 8px;
-    padding: 12px; margin-bottom: 8px; cursor: pointer; transition: border-color 0.15s;
-  }
-  .result-card:hover { border-color: var(--accent); }
-  .result-card.active { border-color: var(--accent); background: #1a221a; }
-  .result-card .name { font-weight: 600; color: #e0e6f0; margin-bottom: 4px; }
-  .result-card .meta { font-size: 12px; color: var(--muted); display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
-  .badge {
-    display: inline-block; padding: 1px 7px; border-radius: 4px;
-    font-size: 11px; font-weight: 600; text-transform: uppercase;
-  }
-  .badge-path { background: #2a4a2a; color: #7c8; }
-  .badge-footway { background: #2a3a4a; color: #8ac; }
-  .badge-track { background: #3a2a1a; color: #ca8; }
-  .badge-unknown { background: #2a2a2a; color: #999; }
+  .legend-item { display: flex; align-items: center; gap: 8px; padding: 4px 0; font-size: 13px; cursor: pointer; border-radius: 4px; }
+  .legend-item:hover { background: var(--surface2); }
+  .legend-swatch { width: 24px; height: 4px; border-radius: 2px; flex-shrink: 0; }
+  .legend-swatch.thick { height: 6px; }
+  .legend-label { flex: 1; }
+  .legend-count { color: var(--text2); font-size: 11px; }
+  .legend-item.disabled { opacity: 0.4; }
+  .legend-item.disabled .legend-swatch { background: var(--text2) !important; }
 
-  /* Detail panel */
-  #detail-overlay {
-    position: fixed; top: 0; right: -440px; bottom: 0; z-index: 1002;
-    width: 400px; max-width: calc(100vw - 32px);
-    background: var(--card); border-left: 1px solid var(--border);
-    transition: right 0.25s ease; display: flex; flex-direction: column;
-    box-shadow: -4px 0 24px rgba(0,0,0,0.4);
-  }
-  #detail-overlay.open { right: 0; }
-  #detail-overlay .detail-header {
-    padding: 14px; border-bottom: 1px solid var(--border);
-    display: flex; justify-content: space-between; align-items: center;
-  }
-  #detail-overlay .detail-header h3 { font-size: 16px; color: #e0e6f0; }
-  #detail-overlay .detail-body { padding: 16px; overflow-y: auto; flex: 1; }
-  #detail-overlay .detail-body .field { margin-bottom: 10px; }
-  #detail-overlay .detail-body .field .label { font-size: 11px; text-transform: uppercase; color: var(--muted); letter-spacing: 0.5px; }
-  #detail-overlay .detail-body .field .value { font-size: 14px; color: #e0e6f0; margin-top: 2px; }
-  .close-btn { background: none; border: none; color: var(--muted); font-size: 22px; cursor: pointer; }
-  .close-btn:hover { color: #e0e6f0; }
+  .controls { padding: 10px 14px; border-top: 1px solid var(--border); }
+  .control-group { margin-bottom: 8px; }
+  .control-group label { display: block; font-size: 11px; color: var(--text2); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .control-group select { width: 100%; padding: 6px 8px; background: var(--surface2); border: 1px solid var(--border); color: var(--text); border-radius: 6px; font-size: 13px; }
+  .control-group select:focus { outline: none; border-color: var(--accent); }
 
-  /* Loading spinner */
-  .spinner { display: inline-block; width: 18px; height: 18px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.6s linear infinite; }
-  @keyframes spin { to { transform: rotate(360deg); } }
+  .btn { width: 100%; padding: 8px; background: var(--accent); color: #000; border: none; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; margin-top: 8px; }
+  .btn:hover { filter: brightness(1.1); }
+  .btn.secondary { background: var(--surface2); color: var(--text); }
 
-  /* Mobile bottom sheet */
-  #mobile-sheet {
-    display: none; position: fixed; bottom: 0; left: 0; right: 0; z-index: 1002;
-    background: var(--card); border-top: 1px solid var(--border);
-    border-radius: 16px 16px 0 0; max-height: 50dvh;
-    box-shadow: 0 -4px 24px rgba(0,0,0,0.4); transition: transform 0.25s ease;
-  }
-  #mobile-sheet .sheet-handle { width: 40px; height: 4px; background: var(--border); border-radius: 2px; margin: 10px auto; }
-  #mobile-sheet .sheet-header { padding: 4px 16px 10px; display: flex; justify-content: space-between; align-items: center; }
-  #mobile-sheet .sheet-list { overflow-y: auto; max-height: calc(50dvh - 80px); padding: 0 8px 16px; }
+  .stats-bar { padding: 6px 14px; background: var(--surface); border-top: 1px solid var(--border); display: flex; gap: 16px; font-size: 12px; color: var(--text2); z-index: 1000; flex-shrink: 0; }
+  .stats-bar strong { color: var(--accent); }
 
-  @media (max-width: 768px) {
-    #header .subtitle { display: inline; }
-    #header .title { font-size: 15px; }
-    #search-bar { top: 56px; left: 8px; right: 8px; width: auto; padding: 10px; transform: none; }
-    #search-bar .row { flex-wrap: wrap; }
-    #results-panel { display: none; }
-    #mobile-sheet { display: block; }
-    #detail-overlay { width: 100%; max-width: 100%; right: -100%; }
-    #search-bar button.near-btn { font-size: 12px; padding: 8px 12px; }
-  }
-  @media (min-width: 769px) {
-    #mobile-sheet { display: none !important; }
+  .loading { position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%); z-index: 999; background: var(--surface); border: 1px solid var(--border); padding: 6px 16px; border-radius: 20px; font-size: 13px; color: var(--text2); box-shadow: 0 4px 16px rgba(0,0,0,0.2); }
+  .loading.hidden { display: none; }
+
+  .leaflet-popup-content-wrapper { background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: 8px; }
+  .leaflet-popup-content { margin: 10px 14px; font-size: 13px; line-height: 1.5; }
+  .popup-name { font-weight: 600; }
+  .popup-meta { color: var(--text2); margin-top: 4px; }
+
+  @media (max-width: 640px) {
+    .panel { width: calc(100% - 24px); right: 12px; left: 12px; }
+    .header h1 { font-size: 14px; }
   }
 </style>
 </head>
 <body>
 
-<div id="header">
-  <a class="back-link" href="https://ogsapps.cc">← OGS Apps</a>
-  <span class="title">🥾 OGS Trails</span>
-  <span class="subtitle">Hiking Trails Across Canada</span>
+<div class="header">
+  <h1>🥾 <span>OGS</span> Trails</h1>
+  <div class="header-links">
+    <a href="https://ogsapps.cc">Portal</a>
+    <a href="https://bike.ogsapps.cc">Bike</a>
+    <a href="https://sea.ogsapps.cc">Sea</a>
+    <button onclick="togglePanel()" style="background:none;border:none;color:var(--text2);cursor:pointer;font-size:16px" title="Toggle panel">⚙️</button>
+  </div>
 </div>
 
 <div id="map"></div>
 
-<div id="search-bar">
-  <input type="text" id="query-input" placeholder="Search trails…" />
-  <div class="row">
-    <select id="province-select">
-      <option value="">All Provinces</option>
-      <option value="BC">BC</option>
-      <option value="AB">AB</option>
-      <option value="SK">SK</option>
-      <option value="MB">MB</option>
-      <option value="ON">ON</option>
-      <option value="QC">QC</option>
-      <option value="NB">NB</option>
-      <option value="NS">NS</option>
-      <option value="PE">PE</option>
-      <option value="NL">NL</option>
-      <option value="YT">YT</option>
-      <option value="NT">NT</option>
-      <option value="NU">NU</option>
-    </select>
-    <select id="type-select">
-      <option value="">All Types</option>
-      <option value="path">Path</option>
-      <option value="footway">Footway</option>
-      <option value="track">Track</option>
-    </select>
-    <button id="search-btn">Search</button>
-    <button id="near-btn" class="secondary" title="Find trails near me">📍 Near Me</button>
-  </div>
-  <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);cursor:pointer;margin-top:2px">
-    <input type="checkbox" id="show-all-paths" checked style="accent-color:var(--accent)">
-    Show all paths on map
-  </label>
-</div>
+<div class="loading hidden" id="loading">Loading trails…</div>
 
-<div id="results-panel">
+<div class="panel" id="panel">
   <div class="panel-header">
-    <h3 id="results-title">Trails</h3>
-    <button onclick="closeResults()">&times;</button>
+    <h2>Trail Layers</h2>
+    <button class="panel-close" onclick="togglePanel()">✕</button>
   </div>
-  <div class="results-list" id="results-list"></div>
+  <div class="panel-body">
+    <div id="legend"></div>
+  </div>
+  <div class="controls">
+    <div class="control-group">
+      <label>Province</label>
+      <select id="province-filter" onchange="reloadData()">
+        <option value="">All Canada</option>
+        <option value="BC">British Columbia</option>
+        <option value="AB">Alberta</option>
+        <option value="SK">Saskatchewan</option>
+        <option value="MB">Manitoba</option>
+        <option value="ON">Ontario</option>
+        <option value="QC">Quebec</option>
+        <option value="NB">New Brunswick</option>
+        <option value="NS">Nova Scotia</option>
+        <option value="PE">PEI</option>
+        <option value="NL">Newfoundland</option>
+        <option value="YT">Yukon</option>
+        <option value="NT">NWT</option>
+        <option value="NU">Nunavut</option>
+      </select>
+    </div>
+    <div class="control-group">
+      <label>Type Filter</label>
+      <select id="type-filter" onchange="reloadData()">
+        <option value="">All types</option>
+        <option value="path">Path</option>
+        <option value="footway">Footway</option>
+        <option value="track">Track</option>
+        <option value="steps">Steps</option>
+        <option value="hiking,alpine_hiking,mountain_hiking,demanding_mountain_hiking">Hiking</option>
+      </select>
+    </div>
+    <button class="btn secondary" onclick="resetView()">Reset View</button>
+  </div>
 </div>
 
-<div id="detail-overlay">
-  <div class="detail-header">
-    <h3 id="detail-title">Trail Details</h3>
-    <button class="close-btn" onclick="closeDetail()">&times;</button>
-  </div>
-  <div class="detail-body" id="detail-body"></div>
+<div class="stats-bar">
+  <span>Trails: <strong id="stat-named">0</strong></span>
+  <span>Paths: <strong id="stat-unnamed">0</strong></span>
+  <span>Total: <strong id="stat-km">0</strong> km</span>
 </div>
 
-<div id="mobile-sheet">
-  <div class="sheet-handle"></div>
-  <div class="sheet-header">
-    <h3 id="sheet-title" style="font-size:15px;color:#e0e6f0">Trails</h3>
-    <button class="close-btn" onclick="closeMobileSheet()">&times;</button>
-  </div>
-  <div class="sheet-list" id="sheet-list"></div>
-</div>
-
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 const API = 'https://maps.ogsapps.cc/api';
 
-// --- Province detection ---
-const PROVINCES = [
-  { abbr: 'BC', latMin: 48,  latMax: 60,  lonMin: -139.5, lonMax: -114 },
-  { abbr: 'AB', latMin: 49,  latMax: 60,  lonMin: -120,   lonMax: -110 },
-  { abbr: 'SK', latMin: 49,  latMax: 60,  lonMin: -110,   lonMax: -101.5 },
-  { abbr: 'MB', latMin: 49,  latMax: 60,  lonMin: -102,   lonMax: -89 },
-  { abbr: 'ON', latMin: 42,  latMax: 57,  lonMin: -95.5,  lonMax: -74 },
-  { abbr: 'QC', latMin: 45,  latMax: 62.5,lonMin: -79.5,  lonMax: -57 },
-  { abbr: 'NB', latMin: 45,  latMax: 48,  lonMin: -69,    lonMax: -64 },
-  { abbr: 'NS', latMin: 43.5,latMax: 47.5,lonMin: -66.5,  lonMax: -59.5 },
-  { abbr: 'PE', latMin: 46,  latMax: 47,  lonMin: -64.5,  lonMax: -61.5 },
-  { abbr: 'NL', latMin: 46.5,latMax: 60.5,lonMin: -67.5,  lonMax: -52.5 },
-  { abbr: 'YT', latMin: 60,  latMax: 72,  lonMin: -141,   lonMax: -124 },
-  { abbr: 'NT', latMin: 60,  latMax: 76,  lonMin: -136,   lonMax: -102 },
-  { abbr: 'NU', latMin: 52,  latMax: 84,  lonMin: -121,   lonMax: -57 },
-];
+// Province bounds
+const PROVINCE_BOUNDS = {
+  BC: [48,60,-139.5,-114], AB: [49,60,-120,-110], SK: [49,60,-110,-101.5],
+  MB: [49,60,-102,-89], ON: [42,57,-95.5,-74], QC: [45,62.5,-79.5,-57],
+  NB: [45,48,-69,-64], NS: [43.5,47.5,-66.5,-59.5], PE: [46,47,-64.5,-61.5],
+  NL: [46.5,60.5,-67.5,-52.5], YT: [60,72,-141,-124], NT: [60,76,-136,-102],
+  NU: [52,84,-121,-57]
+};
 
-function provinceFromLatLon(lat, lon) {
-  for (const p of PROVINCES) {
-    if (lat >= p.latMin && lat <= p.latMax && lon >= p.lonMin && lon <= p.lonMax) {
-      return p.abbr;
-    }
-  }
-  return null;
-}
+let map, namedLayer, unnamedLayer, loading = false;
+let namedEnabled = true, unnamedEnabled = true;
 
-function badgeClass(type) {
-  if (type === 'path') return 'badge-path';
-  if (type === 'footway') return 'badge-footway';
-  if (type === 'track') return 'badge-track';
-  return 'badge-unknown';
-}
-
-// --- Map ---
-const map = L.map('map', { zoomControl: true }).setView([53, -125], 6);
-
-// Voyager-style tiles (CartoDB Voyager)
+// Init map
+map = L.map('map', { zoomControl: true }).setView([53, -125], 6);
 L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-  attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>',
-  subdomains: 'abcd',
-  maxZoom: 20
+  attribution: '&copy; <a href="https://carto.com/">CARTO</a> &copy; <a href="https://osm.org/copyright">OSM</a>',
+  maxZoom: 18
 }).addTo(map);
 
-// GeoJSON layer for trail geometry
-let geojsonLayer = null;
-let pathsLayer = null;
-let trailsAutoLayer = null;
-let markers = [];
-let showAllPaths = true;
+namedLayer = L.layerGroup().addTo(map);
+unnamedLayer = L.layerGroup().addTo(map);
 
-// --- State ---
-let currentResults = [];
-let selectedTrailId = null;
-
-// --- API helpers ---
-async function apiFetch(path) {
-  const resp = await fetch(API + path);
-  if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-  return resp.json();
-}
-
-// --- Search ---
-async function doSearch(query, province, type, limit = 20) {
-  const params = new URLSearchParams();
-  if (query) params.set('q', query);
-  if (province) params.set('province', province);
-  if (type) params.set('type', type);
-  params.set('limit', limit);
-  return apiFetch(`/trails/search?${params}`);
-}
-
-async function doNear(lat, lon, type, limit = 20) {
-  const params = new URLSearchParams({ lat, lon, radius: 10000, limit });
-  if (type) params.set('type', type);
-  return apiFetch(`/trails/near?${params}`);
-}
-
-async function doGeocode(q) {
-  return apiFetch(`/geocode?q=${encodeURIComponent(q)}`);
-}
-
-// --- Rendering ---
-function renderResultCards(results, containerId, isMobile = false) {
-  const container = document.getElementById(containerId);
-  if (!results.length) {
-    container.innerHTML = '<div style="padding:16px;color:var(--muted);text-align:center">No trails found</div>';
-    return;
-  }
-  let html = '';
-  results.forEach((t, i) => {
-    const prov = provinceFromLatLon(t.lat, t.lon) || '—';
-    const cls = t.id === selectedTrailId ? ' active' : '';
-    html += `
-      <div class="result-card${cls}" onclick="selectTrail(${t.id}, ${isMobile})" data-id="${t.id}">
-        <div class="name">${esc(t.name)}</div>
-        <div class="meta">
-          <span class="badge ${badgeClass(t.trail_type)}">${esc(t.trail_type || '?')}</span>
-          <span>${t.total_length_km != null ? t.total_length_km.toFixed(1) + ' km' : '—'}</span>
-          <span>${t.segment_count || 0} segments</span>
-          <span style="color:var(--accent)">${prov}</span>
-        </div>
-      </div>`;
-  });
-  container.innerHTML = html;
-}
-
-function esc(s) {
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
-
-// --- Select / detail ---
-async function selectTrail(id, isMobile = false) {
-  selectedTrailId = id;
-  currentResults.forEach(t => {
-    const el = document.querySelector(`.result-card[data-id="${t.id}"]`);
-    if (el) el.classList.toggle('active', t.id === id);
-  });
-  // Mobile sheet cards
-  document.querySelectorAll('#sheet-list .result-card').forEach(el => {
-    el.classList.toggle('active', +el.dataset.id === id);
-  });
-
-  const trail = currentResults.find(t => t.id === id);
-  if (!trail) return;
-
-  // Zoom map
-  map.setView([trail.lat, trail.lon], 13);
-
-  // Show detail
-  await showDetail(trail, isMobile);
-}
-
-async function showDetail(trail, isMobile = false) {
-  const overlay = document.getElementById('detail-overlay');
-  const title = document.getElementById('detail-title');
-  const body = document.getElementById('detail-body');
-
-  title.textContent = trail.name;
-  const prov = provinceFromLatLon(trail.lat, trail.lon) || '—';
-
-  body.innerHTML = `
-    <div class="field"><div class="label">Name</div><div class="value">${esc(trail.name)}</div></div>
-    <div class="field"><div class="label">Type</div><div class="value"><span class="badge ${badgeClass(trail.trail_type)}">${esc(trail.trail_type || '?')}</span></div></div>
-    <div class="field"><div class="label">Surface</div><div class="value">${esc(trail.surface || '—')}</div></div>
-    <div class="field"><div class="label">Difficulty (SAC Scale)</div><div class="value">${esc(trail.sac_scale || '—')}</div></div>
-    <div class="field"><div class="label">Total Length</div><div class="value">${trail.total_length_km != null ? trail.total_length_km.toFixed(2) + ' km' : '—'}</div></div>
-    <div class="field"><div class="label">Segments</div><div class="value">${trail.segment_count || 0}</div></div>
-    <div class="field"><div class="label">Coordinates</div><div class="value">${trail.lat.toFixed(4)}, ${trail.lon.toFixed(4)}</div></div>
-    <div class="field"><div class="label">Province</div><div class="value" style="color:var(--accent)">${prov}</div></div>
-    <div id="geojson-status" style="margin-top:12px;font-size:12px;color:var(--muted)">Loading trail geometry…</div>
-    <div id="geojson-error" style="margin-top:4px;font-size:12px;color:#c66;display:none"></div>
+// Legend
+function buildLegend() {
+  const el = document.getElementById('legend');
+  el.innerHTML = `
+    <div class="legend-item ${namedEnabled ? '' : 'disabled'}" id="leg-named">
+      <div class="legend-swatch thick" style="background:#22c55e"></div>
+      <span class="legend-label">Named Trails</span>
+      <span class="legend-count" id="count-named"></span>
+    </div>
+    <div class="legend-item ${unnamedEnabled ? '' : 'disabled'}" id="leg-unnamed">
+      <div class="legend-swatch" style="background:#94a3b8"></div>
+      <span class="legend-label">All Paths</span>
+      <span class="legend-count" id="count-unnamed"></span>
+    </div>
   `;
-
-  overlay.classList.add('open');
-
-  // Fetch GeoJSON
-  loadGeoJSON(trail.id);
+  document.getElementById('leg-named').addEventListener('click', () => { namedEnabled = !namedEnabled; toggleLayers(); });
+  document.getElementById('leg-unnamed').addEventListener('click', () => { unnamedEnabled = !unnamedEnabled; toggleLayers(); });
 }
 
-async function loadGeoJSON(id) {
-  if (geojsonLayer) { map.removeLayer(geojsonLayer); geojsonLayer = null; }
-  const statusEl = document.getElementById('geojson-status');
-  const errorEl = document.getElementById('geojson-error');
-
-  try {
-    const data = await apiFetch(`/trails/info/${id}?geojson=1`);
-
-    // The response might be a FeatureCollection or have geojson embedded
-    let geojson = data;
-    if (data && data.geojson) geojson = data.geojson;
-    if (typeof geojson === 'string') geojson = JSON.parse(geojson);
-
-    if (geojson && (geojson.type === 'FeatureCollection' || geojson.type === 'Feature' || geojson.type === 'GeometryCollection')) {
-      geojsonLayer = L.geoJSON(geojson, {
-        style: { color: '#5a6', weight: 3, opacity: 0.85 },
-      }).addTo(map);
-
-      // Fit bounds
-      try {
-        const bounds = geojsonLayer.getBounds();
-        if (bounds.isValid()) map.fitBounds(bounds, { padding: [50, 50], maxZoom: 14 });
-      } catch (e) { /* ignore */ }
-
-      if (statusEl) statusEl.innerHTML = '<span style="color:var(--accent)">✓ Trail geometry loaded</span>';
-    } else {
-      if (statusEl) statusEl.innerHTML = '<span style="color:#ca8">No geometry data available for this trail</span>';
-    }
-  } catch (e) {
-    if (statusEl) statusEl.textContent = '';
-    if (errorEl) { errorEl.style.display = 'block'; errorEl.textContent = 'Could not load trail geometry (server may be busy).'; }
-  }
+function toggleLayers() {
+  if (namedEnabled) { if (!map.hasLayer(namedLayer)) map.addLayer(namedLayer); }
+  else { if (map.hasLayer(namedLayer)) map.removeLayer(namedLayer); }
+  if (unnamedEnabled) { if (!map.hasLayer(unnamedLayer)) map.addLayer(unnamedLayer); }
+  else { if (map.hasLayer(unnamedLayer)) map.removeLayer(unnamedLayer); }
+  buildLegend();
 }
 
-// --- Drawing markers ---
-function drawMarkers(results) {
-  markers.forEach(m => map.removeLayer(m));
-  markers = [];
-  results.forEach(t => {
-    const marker = L.circleMarker([t.lat, t.lon], {
-      radius: 6,
-      fillColor: '#5a6',
-      color: '#fff',
-      weight: 1.5,
-      fillOpacity: 0.85
-    }).addTo(map);
-    marker.bindTooltip(esc(t.name), { direction: 'top', offset: [0, -8] });
-    marker.on('click', () => selectTrail(t.id, window.innerWidth <= 768));
-    markers.push(marker);
-  });
-}
-
-// --- Show all paths (unnamed) + named trails on map as you zoom ---
-let trailsAutoLayer = null;
-async function loadPathsForViewport() {
-  if (!showAllPaths) {
-    if (pathsLayer) { map.removeLayer(pathsLayer); pathsLayer = null; }
-    if (trailsAutoLayer) { map.removeLayer(trailsAutoLayer); trailsAutoLayer = null; }
-    return;
-  }
+// Load trails for current viewport
+async function loadData() {
+  if (loading) return;
   const bounds = map.getBounds();
-  const sw = bounds.getSouthWest();
-  const ne = bounds.getNorthEast();
-  if (map.getZoom() < 8) {
-    if (pathsLayer) { map.removeLayer(pathsLayer); pathsLayer = null; }
-    if (trailsAutoLayer) { map.removeLayer(trailsAutoLayer); trailsAutoLayer = null; }
-    return;
+  const sw = bounds.getSouthWest(), ne = bounds.getNorthEast();
+  const prov = document.getElementById('province-filter').value;
+  const type = document.getElementById('type-filter').value;
+
+  // Apply province bounding box if selected
+  let minlat = sw.lat, maxlat = ne.lat, minlon = sw.lng, maxlon = ne.lng;
+  if (prov && PROVINCE_BOUNDS[prov]) {
+    const [plat0, plat1, plon0, plon1] = PROVINCE_BOUNDS[prov];
+    minlat = Math.max(sw.lat, plat0);
+    maxlat = Math.min(ne.lat, plat1);
+    minlon = Math.max(sw.lng, plon0);
+    maxlon = Math.min(ne.lng, plon1);
   }
+
+  loading = true;
+  document.getElementById('loading').classList.remove('hidden');
+
   try {
-    const params = new URLSearchParams({
-      minlat: sw.lat, maxlat: ne.lat, minlon: sw.lng, maxlon: ne.lng, limit: 5000
-    });
-    const segments = await apiFetch('/trails/segments?' + params.toString());
-    if (!segments.length) return;
+    let url = `${API}/trails/segments?minlat=${minlat.toFixed(5)}&maxlat=${maxlat.toFixed(5)}&minlon=${minlon.toFixed(5)}&maxlon=${maxlon.toFixed(5)}&limit=5000`;
+    if (type) url += '&types=' + encodeURIComponent(type);
 
-    const namedFeatures = [];
-    const unnamedFeatures = [];
-    segments.forEach(s => {
-      let coords = [];
-      if (s.geometry) {
-        try {
-          const parsed = typeof s.geometry === 'string' ? JSON.parse(s.geometry) : s.geometry;
-          if (Array.isArray(parsed) && parsed.length >= 2) coords = parsed;
-        } catch (e) {}
-      }
-      if (coords.length < 2) coords = [[s.lon, s.lat]];
-      const feature = {
-        type: 'Feature',
-        properties: { name: s.name || '', id: s.id },
-        geometry: { type: 'LineString', coordinates: coords }
-      };
-      if (s.name && s.name.trim()) {
-        namedFeatures.push(feature);
-      } else {
-        unnamedFeatures.push(feature);
-      }
-    });
-
-    // Unnamed paths: subtle gray
-    if (pathsLayer) map.removeLayer(pathsLayer);
-    if (unnamedFeatures.length) {
-      pathsLayer = L.geoJSON({ type: 'FeatureCollection', features: unnamedFeatures }, {
-        style: { color: '#778899', weight: 1, opacity: 0.35 }
-      }).addTo(map);
-    }
-
-    // Named trails: prominent green
-    if (trailsAutoLayer) map.removeLayer(trailsAutoLayer);
-    if (namedFeatures.length) {
-      trailsAutoLayer = L.geoJSON({ type: 'FeatureCollection', features: namedFeatures }, {
-        style: { color: '#5a6', weight: 2.5, opacity: 0.8 },
-        onEachFeature: function(feature, layer) {
-          if (feature.properties.name) {
-            layer.bindTooltip(feature.properties.name, { direction: 'top', sticky: true });
-          }
-          layer.on('click', function() {
-            const t = currentResults.find(r => r.id === feature.properties.id);
-            if (t) {
-              selectTrail(t.id, window.innerWidth <= 768);
-            } else {
-              // If not in currentResults, search for it
-              map.setView(layer.getBounds().getCenter(), 14);
-            }
-          });
-        }
-      }).addTo(map);
-    }
-  } catch (e) { console.error('Paths load failed:', e); }
-}
-
-// --- Actions ---
-async function search() {
-  const query = document.getElementById('query-input').value.trim();
-  const province = document.getElementById('province-select').value;
-  const type = document.getElementById('type-select').value;
-
-  showLoading();
-  try {
-    const results = await doSearch(query, province, type);
-    currentResults = results;
-    updateUI(results);
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const segments = await res.json();
+    renderSegments(segments);
   } catch (e) {
-    showError('Search failed: ' + e.message);
+    console.error('Load failed:', e);
+  } finally {
+    loading = false;
+    document.getElementById('loading').classList.add('hidden');
   }
 }
 
-async function nearMe() {
-  if (!navigator.geolocation) {
-    alert('Geolocation not supported by your browser.');
-    return;
-  }
-  navigator.geolocation.getCurrentPosition(async (pos) => {
-    const { latitude, longitude } = pos.coords;
-    const type = document.getElementById('type-select').value;
-    showLoading();
-    try {
-      const results = await doNear(latitude, longitude, type);
-      currentResults = results;
-      updateUI(results);
-      map.setView([latitude, longitude], 12);
-      L.circleMarker([latitude, longitude], {
-        radius: 8, fillColor: '#39f', color: '#fff', weight: 2, fillOpacity: 0.9
-      }).addTo(map).bindTooltip('You are here').openTooltip();
-    } catch (e) {
-      showError('Nearby search failed: ' + e.message);
+function renderSegments(segments) {
+  namedLayer.clearLayers();
+  unnamedLayer.clearLayers();
+
+  let namedCount = 0, unnamedCount = 0, totalKm = 0;
+
+  segments.forEach(s => {
+    let coords = [];
+    if (s.geometry) {
+      try {
+        const parsed = typeof s.geometry === 'string' ? JSON.parse(s.geometry) : s.geometry;
+        if (Array.isArray(parsed) && parsed.length >= 2) coords = parsed;
+      } catch (e) {}
     }
-  }, (err) => {
-    alert('Location access denied or unavailable.');
+    if (coords.length < 2) return; // skip single-point segments
+
+    const latlngs = coords.map(c => [c[1], c[0]]);
+    totalKm += s.length_km || 0;
+
+    const isNamed = s.name && s.name.trim();
+    if (isNamed) {
+      namedCount++;
+      if (!namedEnabled) return;
+      const line = L.polyline(latlngs, { color: '#22c55e', weight: 3, opacity: 0.8 });
+      line.bindPopup('<div class="popup-name">' + esc(s.name) + '</div><div class="popup-meta">' + esc(s.trail_type || '') + ' · ' + (s.length_km ? s.length_km.toFixed(2) + ' km' : '') + '</div>');
+      line.on('mouseover', () => line.setStyle({ weight: 5, opacity: 1 }));
+      line.on('mouseout', () => line.setStyle({ weight: 3, opacity: 0.8 }));
+      namedLayer.addLayer(line);
+    } else {
+      unnamedCount++;
+      if (!unnamedEnabled) return;
+      unnamedLayer.addLayer(L.polyline(latlngs, { color: '#94a3b8', weight: 1, opacity: 0.35 }));
+    }
   });
+
+  document.getElementById('stat-named').textContent = namedCount.toLocaleString();
+  document.getElementById('stat-unnamed').textContent = unnamedCount.toLocaleString();
+  document.getElementById('stat-km').textContent = totalKm.toFixed(1);
+  document.getElementById('count-named').textContent = namedCount.toLocaleString();
+  document.getElementById('count-unnamed').textContent = unnamedCount.toLocaleString();
 }
 
-function updateUI(results) {
-  const isMobile = window.innerWidth <= 768;
-  if (isMobile) {
-    document.getElementById('mobile-sheet').style.display = 'block';
-    renderResultCards(results, 'sheet-list', true);
-    document.getElementById('sheet-title').textContent = 'Trails (' + results.length + ')';
-  } else {
-    document.getElementById('results-panel').classList.add('open');
-    renderResultCards(results, 'results-list', false);
-    document.getElementById('results-title').textContent = 'Trails (' + results.length + ')';
-  }
-  drawMarkers(results);
-  // Auto-load trail line geometry for top results on map
-  loadTrailLines(results.slice(0, 3));
-  if (results.length && !isMobile) {
-    // Fit to markers
-    const group = L.featureGroup(markers);
-    const bounds = group.getBounds();
-    if (bounds.isValid()) map.fitBounds(bounds, { padding: [50, 50], maxZoom: 12 });
-  }
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+function reloadData() { loadData(); }
+function resetView() {
+  map.setView([53, -125], 6);
+  document.getElementById('province-filter').value = '';
+  document.getElementById('type-filter').value = '';
+  loadData();
+}
+function togglePanel() {
+  const p = document.getElementById('panel');
+  p.style.display = p.style.display === 'none' ? '' : 'none';
 }
 
-async function loadTrailLines(trails) {
-  if (geojsonLayer) { map.removeLayer(geojsonLayer); geojsonLayer = null; }
-  const allFeatures = [];
-  for (const t of trails) {
-    try {
-      const data = await apiFetch('/trails/info/' + t.id + '?geojson=1');
-      let gj = data.geojson || data;
-      if (gj && gj.type === 'FeatureCollection') {
-        allFeatures.push(...gj.features);
-      } else if (gj && gj.type === 'Feature') {
-        allFeatures.push(gj);
-      }
-    } catch (e) { /* skip */ }
-  }
-  if (allFeatures.length) {
-    geojsonLayer = L.geoJSON({ type: 'FeatureCollection', features: allFeatures }, {
-      style: { color: '#5a6', weight: 3, opacity: 0.85 }
-    }).addTo(map);
-  }
-}
-
-function showLoading() {
-  const isMobile = window.innerWidth <= 768;
-  const listId = isMobile ? 'sheet-list' : 'results-list';
-  document.getElementById(listId).innerHTML = '<div style="padding:24px;text-align:center"><span class="spinner"></span></div>';
-  if (isMobile) {
-    document.getElementById('mobile-sheet').style.display = 'block';
-  } else {
-    document.getElementById('results-panel').classList.add('open');
-  }
-}
-
-function showError(msg) {
-  const isMobile = window.innerWidth <= 768;
-  const listId = isMobile ? 'sheet-list' : 'results-list';
-  document.getElementById(listId).innerHTML = `<div style="padding:16px;color:#c66;text-align:center">${esc(msg)}</div>`;
-}
-
-function closeResults() {
-  document.getElementById('results-panel').classList.remove('open');
-  document.getElementById('detail-overlay').classList.remove('open');
-}
-
-function closeDetail() {
-  document.getElementById('detail-overlay').classList.remove('open');
-  if (geojsonLayer) { map.removeLayer(geojsonLayer); geojsonLayer = null; }
-}
-
-function closeMobileSheet() {
-  document.getElementById('mobile-sheet').style.display = 'none';
-  document.getElementById('detail-overlay').classList.remove('open');
-}
-
-// --- Init ---
-document.getElementById('search-btn').addEventListener('click', search);
-document.getElementById('near-btn').addEventListener('click', nearMe);
-document.getElementById('query-input').addEventListener('keydown', (e) => {
-  if (e.key === 'Enter') search();
-});
-
-// Close panels with Escape
-document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape') {
-    closeDetail();
-    closeResults();
-    closeMobileSheet();
-  }
-});
-
-// Handle resize for mobile/desktop transition
-window.addEventListener('resize', () => {
-  const isMobile = window.innerWidth <= 768;
-  if (!isMobile) {
-    document.getElementById('mobile-sheet').style.display = 'none';
-  }
-});
-
-// Show all paths toggle
-const pathsToggle = document.getElementById('show-all-paths');
-pathsToggle.addEventListener('change', () => {
-  showAllPaths = pathsToggle.checked;
-  if (showAllPaths) {
-    loadPathsForViewport();
-  } else {
-    if (pathsLayer) { map.removeLayer(pathsLayer); pathsLayer = null; }
-    if (trailsAutoLayer) { map.removeLayer(trailsAutoLayer); trailsAutoLayer = null; }
-  }
-});
-
-// Reload paths when map moves
-let pathsTimer = null;
+// Map events
+let moveTimer;
 map.on('moveend', () => {
-  if (showAllPaths) {
-    clearTimeout(pathsTimer);
-    pathsTimer = setTimeout(loadPathsForViewport, 300);
-  }
+  clearTimeout(moveTimer);
+  moveTimer = setTimeout(loadData, 300);
+});
+window.addEventListener('resize', () => {
+  map.invalidateSize();
+  clearTimeout(moveTimer);
+  moveTimer = setTimeout(loadData, 300);
 });
 
-// Load initial trails on startup
-(async function init() {
-  try {
-    const results = await doSearch('', '', '', 20);
-    currentResults = results;
-    updateUI(results);
-  } catch (e) {
-    console.error('Initial load failed:', e);
-  }
-  // Load paths layer after initial map render
-  setTimeout(() => loadPathsForViewport(), 500);
-})();
+buildLegend();
+loadData();
 </script>
 </body>
 </html>
