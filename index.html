@@ -32,13 +32,13 @@
   /* Map */
   #map { position: fixed; inset: 0; z-index: 0; }
 
-  /* Search bar on map */
+  /* Search bar on map — centered top */
   #search-bar {
-    position: fixed; top: 64px; left: 16px; z-index: 1000;
+    position: fixed; top: 64px; left: 50%; transform: translateX(-50%); z-index: 1001;
     display: flex; flex-direction: column; gap: 8px;
     background: var(--card); border: 1px solid var(--border);
     border-radius: 10px; padding: 12px;
-    width: 340px; max-width: calc(100vw - 32px);
+    width: 420px; max-width: calc(100vw - 32px);
     box-shadow: 0 4px 24px rgba(0,0,0,0.5);
   }
   #search-bar input, #search-bar select {
@@ -130,7 +130,7 @@
   @media (max-width: 768px) {
     #header .subtitle { display: inline; }
     #header .title { font-size: 15px; }
-    #search-bar { top: 56px; left: 8px; right: 8px; width: auto; padding: 10px; }
+    #search-bar { top: 56px; left: 8px; right: 8px; width: auto; padding: 10px; transform: none; }
     #search-bar .row { flex-wrap: wrap; }
     #results-panel { display: none; }
     #mobile-sheet { display: block; }
@@ -180,6 +180,10 @@
     <button id="search-btn">Search</button>
     <button id="near-btn" class="secondary" title="Find trails near me">📍 Near Me</button>
   </div>
+  <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);cursor:pointer;margin-top:2px">
+    <input type="checkbox" id="show-all-paths" style="accent-color:var(--accent)">
+    Show all paths on map
+  </label>
 </div>
 
 <div id="results-panel">
@@ -255,7 +259,9 @@ L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r
 
 // GeoJSON layer for trail geometry
 let geojsonLayer = null;
+let pathsLayer = null;
 let markers = [];
+let showAllPaths = false;
 
 // --- State ---
 let currentResults = [];
@@ -418,6 +424,39 @@ function drawMarkers(results) {
   });
 }
 
+// --- Show all paths (unnamed segments) on map ---
+async function loadPathsForViewport() {
+  if (!showAllPaths) {
+    if (pathsLayer) { map.removeLayer(pathsLayer); pathsLayer = null; }
+    return;
+  }
+  const bounds = map.getBounds();
+  const sw = bounds.getSouthWest();
+  const ne = bounds.getNorthEast();
+  if (map.getZoom() < 8) {
+    if (pathsLayer) { map.removeLayer(pathsLayer); pathsLayer = null; }
+    return;
+  }
+  try {
+    const params = new URLSearchParams({
+      minlat: sw.lat, maxlat: ne.lat, minlon: sw.lng, maxlon: ne.lng, limit: 5000
+    });
+    const segments = await apiFetch('/trails/segments?' + params.toString());
+    if (!segments.length) return;
+    if (pathsLayer) map.removeLayer(pathsLayer);
+    const features = segments.map(s => ({
+      type: 'Feature',
+      properties: { name: s.name || '' },
+      geometry: { type: 'Point', coordinates: [s.lon, s.lat] }
+    }));
+    pathsLayer = L.geoJSON({ type: 'FeatureCollection', features }, {
+      pointToLayer: (feature, latlng) => L.circleMarker(latlng, {
+        radius: 1.2, fillColor: '#8899aa', color: 'transparent', fillOpacity: 0.3, weight: 0
+      })
+    }).addTo(map);
+  } catch (e) { console.error('Paths load failed:', e); }
+}
+
 // --- Actions ---
 async function search() {
   const query = document.getElementById('query-input').value.trim();
@@ -532,6 +571,26 @@ window.addEventListener('resize', () => {
   const isMobile = window.innerWidth <= 768;
   if (!isMobile) {
     document.getElementById('mobile-sheet').style.display = 'none';
+  }
+});
+
+// Show all paths toggle
+const pathsToggle = document.getElementById('show-all-paths');
+pathsToggle.addEventListener('change', () => {
+  showAllPaths = pathsToggle.checked;
+  if (showAllPaths) {
+    loadPathsForViewport();
+  } else {
+    if (pathsLayer) { map.removeLayer(pathsLayer); pathsLayer = null; }
+  }
+});
+
+// Reload paths when map moves
+let pathsTimer = null;
+map.on('moveend', () => {
+  if (showAllPaths) {
+    clearTimeout(pathsTimer);
+    pathsTimer = setTimeout(loadPathsForViewport, 300);
   }
 });
 
