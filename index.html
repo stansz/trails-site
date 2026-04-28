@@ -512,18 +512,41 @@ function updateUI(results) {
   if (isMobile) {
     document.getElementById('mobile-sheet').style.display = 'block';
     renderResultCards(results, 'sheet-list', true);
-    document.getElementById('sheet-title').textContent = `Trails (${results.length})`;
+    document.getElementById('sheet-title').textContent = 'Trails (' + results.length + ')';
   } else {
     document.getElementById('results-panel').classList.add('open');
     renderResultCards(results, 'results-list', false);
-    document.getElementById('results-title').textContent = `Trails (${results.length})`;
+    document.getElementById('results-title').textContent = 'Trails (' + results.length + ')';
   }
   drawMarkers(results);
+  // Auto-load trail line geometry for top results on map
+  loadTrailLines(results.slice(0, 3));
   if (results.length && !isMobile) {
     // Fit to markers
     const group = L.featureGroup(markers);
     const bounds = group.getBounds();
     if (bounds.isValid()) map.fitBounds(bounds, { padding: [50, 50], maxZoom: 12 });
+  }
+}
+
+async function loadTrailLines(trails) {
+  if (geojsonLayer) { map.removeLayer(geojsonLayer); geojsonLayer = null; }
+  const allFeatures = [];
+  for (const t of trails) {
+    try {
+      const data = await apiFetch('/trails/info/' + t.id + '?geojson=1');
+      let gj = data.geojson || data;
+      if (gj && gj.type === 'FeatureCollection') {
+        allFeatures.push(...gj.features);
+      } else if (gj && gj.type === 'Feature') {
+        allFeatures.push(gj);
+      }
+    } catch (e) { /* skip */ }
+  }
+  if (allFeatures.length) {
+    geojsonLayer = L.geoJSON({ type: 'FeatureCollection', features: allFeatures }, {
+      style: { color: '#5a6', weight: 3, opacity: 0.85 }
+    }).addTo(map);
   }
 }
 
