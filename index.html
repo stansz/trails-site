@@ -24,13 +24,11 @@
 
   #map { flex: 1; z-index: 1; }
 
-  /* Panel */
   .panel { position: absolute; top: 52px; right: 12px; z-index: 999; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; width: 260px; max-height: calc(100vh - 72px); overflow-y: auto; box-shadow: 0 8px 32px rgba(0,0,0,0.35); }
   .panel-header { padding: 12px 14px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; background: var(--surface); z-index: 1; }
   .panel-header h2 { font-size: 14px; font-weight: 600; }
   .panel-close { background: none; border: none; color: var(--text2); cursor: pointer; font-size: 18px; padding: 0 4px; }
   .panel-body { padding: 12px 14px; }
-
   .legend-item { display: flex; align-items: center; gap: 8px; padding: 4px 0; font-size: 13px; cursor: pointer; border-radius: 4px; }
   .legend-item:hover { background: var(--surface2); }
   .legend-swatch { width: 24px; height: 4px; border-radius: 2px; flex-shrink: 0; }
@@ -39,28 +37,20 @@
   .legend-count { color: var(--text2); font-size: 11px; }
   .legend-item.disabled { opacity: 0.4; }
   .legend-item.disabled .legend-swatch { background: var(--text2) !important; }
-
   .controls { padding: 10px 14px; border-top: 1px solid var(--border); }
   .control-group { margin-bottom: 8px; }
   .control-group label { display: block; font-size: 11px; color: var(--text2); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
   .control-group select { width: 100%; padding: 6px 8px; background: var(--surface2); border: 1px solid var(--border); color: var(--text); border-radius: 6px; font-size: 13px; }
-  .control-group select:focus { outline: none; border-color: var(--accent); }
-
-  .btn { width: 100%; padding: 8px; background: var(--accent); color: #000; border: none; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; margin-top: 8px; }
-  .btn:hover { filter: brightness(1.1); }
-  .btn.secondary { background: var(--surface2); color: var(--text); }
-
+  .btn { width: 100%; padding: 8px; background: var(--surface2); color: var(--text); border: none; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; margin-top: 8px; }
+  .btn:hover { filter: brightness(0.95); }
   .stats-bar { padding: 6px 14px; background: var(--surface); border-top: 1px solid var(--border); display: flex; gap: 16px; font-size: 12px; color: var(--text2); z-index: 1000; flex-shrink: 0; }
   .stats-bar strong { color: var(--accent); }
-
   .loading { position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%); z-index: 999; background: var(--surface); border: 1px solid var(--border); padding: 6px 16px; border-radius: 20px; font-size: 13px; color: var(--text2); box-shadow: 0 4px 16px rgba(0,0,0,0.2); }
   .loading.hidden { display: none; }
-
   .leaflet-popup-content-wrapper { background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: 8px; }
   .leaflet-popup-content { margin: 10px 14px; font-size: 13px; line-height: 1.5; }
   .popup-name { font-weight: 600; }
   .popup-meta { color: var(--text2); margin-top: 4px; }
-
   @media (max-width: 640px) {
     .panel { width: calc(100% - 24px); right: 12px; left: 12px; }
     .header h1 { font-size: 14px; }
@@ -75,22 +65,16 @@
     <a href="https://ogsapps.cc">Portal</a>
     <a href="https://bike.ogsapps.cc">Bike</a>
     <a href="https://sea.ogsapps.cc">Sea</a>
-    <button onclick="togglePanel()" style="background:none;border:none;color:var(--text2);cursor:pointer;font-size:16px" title="Toggle panel">⚙️</button>
+    <button onclick="togglePanel()" style="background:none;border:none;color:var(--text2);cursor:pointer;font-size:16px">⚙️</button>
   </div>
 </div>
 
 <div id="map"></div>
-
-<div class="loading hidden" id="loading">Loading trails…</div>
+<div class="loading hidden" id="loading">Loading trails...</div>
 
 <div class="panel" id="panel">
-  <div class="panel-header">
-    <h2>Trail Layers</h2>
-    <button class="panel-close" onclick="togglePanel()">✕</button>
-  </div>
-  <div class="panel-body">
-    <div id="legend"></div>
-  </div>
+  <div class="panel-header"><h2>Trail Layers</h2><button class="panel-close" onclick="togglePanel()">✕</button></div>
+  <div class="panel-body"><div id="legend"></div></div>
   <div class="controls">
     <div class="control-group">
       <label>Province</label>
@@ -98,124 +82,107 @@
         <option value="">All Canada</option>
         <option value="BC">British Columbia</option>
         <option value="AB">Alberta</option>
-        <option value="SK">Saskatchewan</option>
-        <option value="MB">Manitoba</option>
         <option value="ON">Ontario</option>
         <option value="QC">Quebec</option>
-        <option value="NB">New Brunswick</option>
         <option value="NS">Nova Scotia</option>
-        <option value="PE">PEI</option>
-        <option value="NL">Newfoundland</option>
-        <option value="YT">Yukon</option>
-        <option value="NT">NWT</option>
-        <option value="NU">Nunavut</option>
       </select>
     </div>
-    <div class="control-group">
-      <label>Type Filter</label>
-      <select id="type-filter" onchange="reloadData()">
-        <option value="">All types</option>
-        <option value="path">Path</option>
-        <option value="footway">Footway</option>
-        <option value="track">Track</option>
-        <option value="steps">Steps</option>
-        <option value="hiking,alpine_hiking,mountain_hiking,demanding_mountain_hiking">Hiking</option>
-      </select>
-    </div>
-    <button class="btn secondary" onclick="resetView()">Reset View</button>
+    <button class="btn" onclick="resetView()">Reset View</button>
   </div>
 </div>
 
 <div class="stats-bar">
-  <span>Trails: <strong id="stat-named">0</strong></span>
-  <span>Paths: <strong id="stat-unnamed">0</strong></span>
-  <span>Total: <strong id="stat-km">0</strong> km</span>
+  <span>Trails: <strong id="stat-named">—</strong></span>
+  <span>Paths: <strong id="stat-unnamed">—</strong></span>
+  <span>Total: <strong id="stat-km">—</strong> km</span>
+  <span id="stat-debug" style="color:#ef4444;margin-left:auto"></span>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-const API = 'https://maps.ogsapps.cc/api';
-
-// Province bounds
-const PROVINCE_BOUNDS = {
-  BC: [48,60,-139.5,-114], AB: [49,60,-120,-110], SK: [49,60,-110,-101.5],
-  MB: [49,60,-102,-89], ON: [42,57,-95.5,-74], QC: [45,62.5,-79.5,-57],
-  NB: [45,48,-69,-64], NS: [43.5,47.5,-66.5,-59.5], PE: [46,47,-64.5,-61.5],
-  NL: [46.5,60.5,-67.5,-52.5], YT: [60,72,-141,-124], NT: [60,76,-136,-102],
-  NU: [52,84,-121,-57]
+(function() {
+try {
+var API = 'https://maps.ogsapps.cc/api';
+var PROVINCE_BOUNDS = {
+  BC: [48,60,-139.5,-114], AB: [49,60,-120,-110], ON: [42,57,-95.5,-74],
+  QC: [45,62.5,-79.5,-57], NS: [43.5,47.5,-66.5,-59.5]
 };
 
-let map, namedLayer, unnamedLayer, loading = false;
-let namedEnabled = true, unnamedEnabled = true;
+var map, namedLayer, unnamedLayer, loading = false;
+var namedEnabled = true, unnamedEnabled = true;
 
-// Init map
+function debug(msg) {
+  var el = document.getElementById('stat-debug');
+  if (el) el.textContent = msg;
+  console.log(msg);
+}
+
+debug('Init map...');
 map = L.map('map', { zoomControl: true }).setView([53, -125], 6);
+debug('Map created');
+
 L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
   attribution: '&copy; <a href="https://carto.com/">CARTO</a> &copy; <a href="https://osm.org/copyright">OSM</a>',
   maxZoom: 18
 }).addTo(map);
+debug('Tiles added');
 
 namedLayer = L.layerGroup().addTo(map);
 unnamedLayer = L.layerGroup().addTo(map);
 
-// Legend
+// Test marker
+var testMarker = L.circleMarker([53, -125], { radius: 8, fillColor: '#22c55e', color: '#fff', weight: 2, fillOpacity: 1 }).addTo(map);
+testMarker.bindTooltip('Center').openTooltip();
+debug('Test marker added at 53,-125');
+
 function buildLegend() {
-  const el = document.getElementById('legend');
-  el.innerHTML = `
-    <div class="legend-item ${namedEnabled ? '' : 'disabled'}" id="leg-named">
-      <div class="legend-swatch thick" style="background:#22c55e"></div>
-      <span class="legend-label">Named Trails</span>
-      <span class="legend-count" id="count-named"></span>
-    </div>
-    <div class="legend-item ${unnamedEnabled ? '' : 'disabled'}" id="leg-unnamed">
-      <div class="legend-swatch" style="background:#94a3b8"></div>
-      <span class="legend-label">All Paths</span>
-      <span class="legend-count" id="count-unnamed"></span>
-    </div>
-  `;
-  document.getElementById('leg-named').addEventListener('click', () => { namedEnabled = !namedEnabled; toggleLayers(); });
-  document.getElementById('leg-unnamed').addEventListener('click', () => { unnamedEnabled = !unnamedEnabled; toggleLayers(); });
+  var el = document.getElementById('legend');
+  el.innerHTML =
+    '<div class="legend-item ' + (namedEnabled ? '' : 'disabled') + '" id="leg-named">' +
+    '<div class="legend-swatch thick" style="background:#22c55e"></div>' +
+    '<span class="legend-label">Named Trails</span>' +
+    '<span class="legend-count" id="count-named"></span></div>' +
+    '<div class="legend-item ' + (unnamedEnabled ? '' : 'disabled') + '" id="leg-unnamed">' +
+    '<div class="legend-swatch" style="background:#94a3b8"></div>' +
+    '<span class="legend-label">All Paths</span>' +
+    '<span class="legend-count" id="count-unnamed"></span></div>';
+  document.getElementById('leg-named').onclick = function() { namedEnabled = !namedEnabled; toggleLayers(); };
+  document.getElementById('leg-unnamed').onclick = function() { unnamedEnabled = !unnamedEnabled; toggleLayers(); };
 }
 
 function toggleLayers() {
-  if (namedEnabled) { if (!map.hasLayer(namedLayer)) map.addLayer(namedLayer); }
-  else { if (map.hasLayer(namedLayer)) map.removeLayer(namedLayer); }
-  if (unnamedEnabled) { if (!map.hasLayer(unnamedLayer)) map.addLayer(unnamedLayer); }
-  else { if (map.hasLayer(unnamedLayer)) map.removeLayer(unnamedLayer); }
+  namedEnabled ? map.addLayer(namedLayer) : map.removeLayer(namedLayer);
+  unnamedEnabled ? map.addLayer(unnamedLayer) : map.removeLayer(unnamedLayer);
   buildLegend();
 }
 
-// Load trails for current viewport
 async function loadData() {
   if (loading) return;
-  const bounds = map.getBounds();
-  const sw = bounds.getSouthWest(), ne = bounds.getNorthEast();
-  const prov = document.getElementById('province-filter').value;
-  const type = document.getElementById('type-filter').value;
-
-  // Apply province bounding box if selected
-  let minlat = sw.lat, maxlat = ne.lat, minlon = sw.lng, maxlon = ne.lng;
+  var bounds = map.getBounds();
+  var sw = bounds.getSouthWest(), ne = bounds.getNorthEast();
+  var prov = document.getElementById('province-filter').value;
+  var minlat = sw.lat, maxlat = ne.lat, minlon = sw.lng, maxlon = ne.lng;
   if (prov && PROVINCE_BOUNDS[prov]) {
-    const [plat0, plat1, plon0, plon1] = PROVINCE_BOUNDS[prov];
-    minlat = Math.max(sw.lat, plat0);
-    maxlat = Math.min(ne.lat, plat1);
-    minlon = Math.max(sw.lng, plon0);
-    maxlon = Math.min(ne.lng, plon1);
+    minlat = Math.max(sw.lat, PROVINCE_BOUNDS[prov][0]);
+    maxlat = Math.min(ne.lat, PROVINCE_BOUNDS[prov][1]);
+    minlon = Math.max(sw.lng, PROVINCE_BOUNDS[prov][2]);
+    maxlon = Math.min(ne.lng, PROVINCE_BOUNDS[prov][3]);
   }
 
   loading = true;
+  debug('Loading data...');
   document.getElementById('loading').classList.remove('hidden');
 
   try {
-    let url = `${API}/trails/segments?minlat=${minlat.toFixed(5)}&maxlat=${maxlat.toFixed(5)}&minlon=${minlon.toFixed(5)}&maxlon=${maxlon.toFixed(5)}&limit=5000`;
-    if (type) url += '&types=' + encodeURIComponent(type);
-
-    const res = await fetch(url);
+    var url = API + '/trails/segments?minlat=' + minlat.toFixed(5) + '&maxlat=' + maxlat.toFixed(5) + '&minlon=' + minlon.toFixed(5) + '&maxlon=' + maxlon.toFixed(5) + '&limit=2000';
+    debug('Fetching: ' + url.substring(0, 80) + '...');
+    var res = await fetch(url);
     if (!res.ok) throw new Error('HTTP ' + res.status);
-    const segments = await res.json();
+    var segments = await res.json();
+    debug('Got ' + segments.length + ' segments');
     renderSegments(segments);
   } catch (e) {
-    console.error('Load failed:', e);
+    debug('Error: ' + e.message);
   } finally {
     loading = false;
     document.getElementById('loading').classList.add('hidden');
@@ -225,66 +192,56 @@ async function loadData() {
 function renderSegments(segments) {
   namedLayer.clearLayers();
   unnamedLayer.clearLayers();
-
-  let namedCount = 0, unnamedCount = 0, totalKm = 0;
-
-  segments.forEach(s => {
-    let coords = [];
+  var namedCount = 0, unnamedCount = 0, totalKm = 0;
+  segments.forEach(function(s) {
+    var coords = [];
     if (s.geometry) {
       try {
-        const parsed = typeof s.geometry === 'string' ? JSON.parse(s.geometry) : s.geometry;
+        var parsed = typeof s.geometry === 'string' ? JSON.parse(s.geometry) : s.geometry;
         if (Array.isArray(parsed) && parsed.length >= 2) coords = parsed;
       } catch (e) {}
     }
-    if (coords.length < 2) return; // skip single-point segments
-
-    const latlngs = coords.map(c => [c[1], c[0]]);
+    if (coords.length < 2) return;
+    var latlngs = coords.map(function(c) { return [c[1], c[0]]; });
     totalKm += s.length_km || 0;
-
-    const isNamed = s.name && s.name.trim();
-    if (isNamed) {
-      namedCount++;
-      if (!namedEnabled) return;
-      const line = L.polyline(latlngs, { color: '#22c55e', weight: 3, opacity: 0.8 });
+    if (s.name && s.name.trim()) {
+      namedCount++; if (!namedEnabled) return;
+      var line = L.polyline(latlngs, { color: '#22c55e', weight: 3, opacity: 0.8 });
       line.bindPopup('<div class="popup-name">' + esc(s.name) + '</div><div class="popup-meta">' + esc(s.trail_type || '') + ' · ' + (s.length_km ? s.length_km.toFixed(2) + ' km' : '') + '</div>');
-      line.on('mouseover', () => line.setStyle({ weight: 5, opacity: 1 }));
-      line.on('mouseout', () => line.setStyle({ weight: 3, opacity: 0.8 }));
+      line.on('mouseover', function() { line.setStyle({ weight: 5, opacity: 1 }); });
+      line.on('mouseout', function() { line.setStyle({ weight: 3, opacity: 0.8 }); });
       namedLayer.addLayer(line);
     } else {
-      unnamedCount++;
-      if (!unnamedEnabled) return;
+      unnamedCount++; if (!unnamedEnabled) return;
       unnamedLayer.addLayer(L.polyline(latlngs, { color: '#94a3b8', weight: 1, opacity: 0.35 }));
     }
   });
-
-  document.getElementById('stat-named').textContent = namedCount.toLocaleString();
-  document.getElementById('stat-unnamed').textContent = unnamedCount.toLocaleString();
+  document.getElementById('stat-named').textContent = namedCount;
+  document.getElementById('stat-unnamed').textContent = unnamedCount;
   document.getElementById('stat-km').textContent = totalKm.toFixed(1);
-  document.getElementById('count-named').textContent = namedCount.toLocaleString();
-  document.getElementById('count-unnamed').textContent = unnamedCount.toLocaleString();
+  document.getElementById('count-named').textContent = namedCount;
+  document.getElementById('count-unnamed').textContent = unnamedCount;
+  debug('Rendered: ' + namedCount + ' named, ' + unnamedCount + ' unnamed');
 }
 
 function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-
 function reloadData() { loadData(); }
 function resetView() {
   map.setView([53, -125], 6);
   document.getElementById('province-filter').value = '';
-  document.getElementById('type-filter').value = '';
   loadData();
 }
 function togglePanel() {
-  const p = document.getElementById('panel');
+  var p = document.getElementById('panel');
   p.style.display = p.style.display === 'none' ? '' : 'none';
 }
 
-// Map events
-let moveTimer;
-map.on('moveend', () => {
+var moveTimer;
+map.on('moveend', function() {
   clearTimeout(moveTimer);
   moveTimer = setTimeout(loadData, 300);
 });
-window.addEventListener('resize', () => {
+window.addEventListener('resize', function() {
   map.invalidateSize();
   clearTimeout(moveTimer);
   moveTimer = setTimeout(loadData, 300);
@@ -292,6 +249,14 @@ window.addEventListener('resize', () => {
 
 buildLegend();
 loadData();
+debug('Init complete');
+
+} catch(e) {
+  var dbg = document.getElementById('stat-debug');
+  if (dbg) dbg.textContent = 'JS ERROR: ' + e.message;
+  console.error(e);
+}
+})();
 </script>
 </body>
 </html>
