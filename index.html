@@ -444,15 +444,24 @@ async function loadPathsForViewport() {
     const segments = await apiFetch('/trails/segments?' + params.toString());
     if (!segments.length) return;
     if (pathsLayer) map.removeLayer(pathsLayer);
-    const features = segments.map(s => ({
-      type: 'Feature',
-      properties: { name: s.name || '' },
-      geometry: { type: 'Point', coordinates: [s.lon, s.lat] }
-    }));
+    const features = segments.map(s => {
+      let coords = [];
+      // geometry is stored as JSON string like [[lon, lat], [lon, lat], ...]
+      if (s.geometry) {
+        try {
+          const parsed = typeof s.geometry === 'string' ? JSON.parse(s.geometry) : s.geometry;
+          if (Array.isArray(parsed) && parsed.length >= 2) coords = parsed;
+        } catch (e) {}
+      }
+      if (coords.length < 2) coords = [[s.lon, s.lat]];
+      return {
+        type: 'Feature',
+        properties: { name: s.name || '' },
+        geometry: { type: 'LineString', coordinates: coords }
+      };
+    });
     pathsLayer = L.geoJSON({ type: 'FeatureCollection', features }, {
-      pointToLayer: (feature, latlng) => L.circleMarker(latlng, {
-        radius: 1.2, fillColor: '#8899aa', color: 'transparent', fillOpacity: 0.3, weight: 0
-      })
+      style: { color: '#556677', weight: 1, opacity: 0.25 }
     }).addTo(map);
   } catch (e) { console.error('Paths load failed:', e); }
 }
