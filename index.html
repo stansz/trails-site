@@ -260,6 +260,7 @@ L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r
 // GeoJSON layer for trail geometry
 let geojsonLayer = null;
 let pathsLayer = null;
+let trailsAutoLayer = null;
 let markers = [];
 let showAllPaths = true;
 
@@ -424,10 +425,12 @@ function drawMarkers(results) {
   });
 }
 
-// --- Show all paths (unnamed segments) on map ---
+// --- Show all paths (unnamed) + named trails on map as you zoom ---
+let trailsAutoLayer = null;
 async function loadPathsForViewport() {
   if (!showAllPaths) {
     if (pathsLayer) { map.removeLayer(pathsLayer); pathsLayer = null; }
+    if (trailsAutoLayer) { map.removeLayer(trailsAutoLayer); trailsAutoLayer = null; }
     return;
   }
   const bounds = map.getBounds();
@@ -435,6 +438,7 @@ async function loadPathsForViewport() {
   const ne = bounds.getNorthEast();
   if (map.getZoom() < 8) {
     if (pathsLayer) { map.removeLayer(pathsLayer); pathsLayer = null; }
+    if (trailsAutoLayer) { map.removeLayer(trailsAutoLayer); trailsAutoLayer = null; }
     return;
   }
   try {
@@ -443,10 +447,11 @@ async function loadPathsForViewport() {
     });
     const segments = await apiFetch('/trails/segments?' + params.toString());
     if (!segments.length) return;
-    if (pathsLayer) map.removeLayer(pathsLayer);
-    const features = segments.map(s => {
+
+    const namedFeatures = [];
+    const unnamedFeatures = [];
+    segments.forEach(s => {
       let coords = [];
-      // geometry is stored as JSON string like [[lon, lat], [lon, lat], ...]
       if (s.geometry) {
         try {
           const parsed = typeof s.geometry === 'string' ? JSON.parse(s.geometry) : s.geometry;
@@ -454,15 +459,47 @@ async function loadPathsForViewport() {
         } catch (e) {}
       }
       if (coords.length < 2) coords = [[s.lon, s.lat]];
-      return {
+      const feature = {
         type: 'Feature',
-        properties: { name: s.name || '' },
+        properties: { name: s.name || '', id: s.id },
         geometry: { type: 'LineString', coordinates: coords }
       };
+      if (s.name && s.name.trim()) {
+        namedFeatures.push(feature);
+      } else {
+        unnamedFeatures.push(feature);
+      }
     });
-    pathsLayer = L.geoJSON({ type: 'FeatureCollection', features }, {
-      style: { color: '#778899', weight: 1, opacity: 0.45 }
-    }).addTo(map);
+
+    // Unnamed paths: subtle gray
+    if (pathsLayer) map.removeLayer(pathsLayer);
+    if (unnamedFeatures.length) {
+      pathsLayer = L.geoJSON({ type: 'FeatureCollection', features: unnamedFeatures }, {
+        style: { color: '#778899', weight: 1, opacity: 0.35 }
+      }).addTo(map);
+    }
+
+    // Named trails: prominent green
+    if (trailsAutoLayer) map.removeLayer(trailsAutoLayer);
+    if (namedFeatures.length) {
+      trailsAutoLayer = L.geoJSON({ type: 'FeatureCollection', features: namedFeatures }, {
+        style: { color: '#5a6', weight: 2.5, opacity: 0.8 },
+        onEachFeature: function(feature, layer) {
+          if (feature.properties.name) {
+            layer.bindTooltip(feature.properties.name, { direction: 'top', sticky: true });
+          }
+          layer.on('click', function() {
+            const t = currentResults.find(r => r.id === feature.properties.id);
+            if (t) {
+              selectTrail(t.id, window.innerWidth <= 768);
+            } else {
+              // If not in currentResults, search for it
+              map.setView(layer.getBounds().getCenter(), 14);
+            }
+          });
+        }
+      }).addTo(map);
+    }
   } catch (e) { console.error('Paths load failed:', e); }
 }
 
@@ -614,6 +651,7 @@ pathsToggle.addEventListener('change', () => {
     loadPathsForViewport();
   } else {
     if (pathsLayer) { map.removeLayer(pathsLayer); pathsLayer = null; }
+    if (trailsAutoLayer) { map.removeLayer(trailsAutoLayer); trailsAutoLayer = null; }
   }
 });
 
