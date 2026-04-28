@@ -139,7 +139,7 @@ var SAC_MAP = {};
 SAC_STYLES.forEach(function(s) { SAC_MAP[s.key] = s; });
 
 // Default trail style for named trails without SAC scale
-var DEFAULT_NAMED = { color: '#22c55e', label: 'Unrated', cls: 'b-green' };
+var DEFAULT_NAMED = { color: '#06b6d4', label: 'Unrated', cls: 'b-cyan' };
 
 function getSAC(seg) {
   if (!seg.sac_scale) return null;
@@ -159,7 +159,7 @@ function buildLegend() {
   html += '<div class="legend-section">Difficulty</div>';
   ALL_KEYS.forEach(function(key) {
     diffState[key] = true;
-    var style = SAC_MAP[key] || { color: '#22c55e', label: 'Unrated' };
+    var style = SAC_MAP[key] || { color: '#06b6d4', label: 'Unrated' };
     html += '<div class="legend-item" onclick="toggleDifficulty(\'' + key + '\')" id="leg-diff-' + key + '">';
     html += '<div class="legend-swatch thick" style="background:' + style.color + '"></div>';
     html += '<span class="legend-label">' + style.label + '</span>';
@@ -269,7 +269,7 @@ function renderSegments(segments) {
       namedLayer.addLayer(line);
     } else {
       unnamedCount++;
-      unnamedLayer.addLayer(L.polyline(latlngs, { color: '#94a3b8', weight: 1, opacity: 0.35 }));
+      unnamedLayer.addLayer(L.polyline(latlngs, { color: '#64748b', weight: 1.2, opacity: 0.45 }));
     }
   });
 
