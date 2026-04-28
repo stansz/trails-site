@@ -122,6 +122,7 @@ var namedLayer = L.layerGroup().addTo(map);
 var unnamedLayer = L.layerGroup().addTo(map);
 var loading = false;
 var unnamedEnabled = true;
+var allNamedLines = []; // keep original line data for toggle rebuilds
 
 // Difficulty state — each key tracks enabled/disabled
 var diffState = {};
@@ -185,14 +186,10 @@ window.toggleUnnamed = function() {
 };
 
 window.refreshLayerVisibility = function() {
-  namedLayer.eachLayer(function(line) {
-    var sacKey = line._sacKey;
-    var visible = !sacKey || (diffState[sacKey] !== false);
-    if (visible && map.hasLayer(namedLayer)) {
-      if (!map.hasLayer(line)) namedLayer.addLayer(line);
-    } else {
-      namedLayer.removeLayer(line);
-    }
+  namedLayer.clearLayers();
+  allNamedLines.forEach(function(item) {
+    var visible = !item.sacKey || (diffState[item.sacKey] !== false);
+    if (visible) namedLayer.addLayer(item.line);
   });
 };
 
@@ -229,6 +226,7 @@ async function loadData() {
 function renderSegments(segments) {
   namedLayer.clearLayers();
   unnamedLayer.clearLayers();
+  allNamedLines = [];
   var namedCount = 0, unnamedCount = 0, totalKm = 0;
   var diffCounts = {};
   SAC_STYLES.forEach(function(s) { diffCounts[s.key] = 0; });
@@ -253,7 +251,8 @@ function renderSegments(segments) {
       if (sac) diffCounts[sac.key] = (diffCounts[sac.key] || 0) + 1;
 
       var line = L.polyline(latlngs, { color: color, weight: 3, opacity: 0.8 });
-      line._sacKey = sac ? sac.key : null;
+      var sacKey = sac ? sac.key : null;
+      allNamedLines.push({ line: line, sacKey: sacKey });
 
       var popupHtml = '<div class="popup-name">' + esc(s.name) + '</div>';
       popupHtml += '<div class="popup-meta">' + esc(s.trail_type || '') + (s.length_km ? ' · ' + s.length_km.toFixed(2) + ' km' : '') + '</div>';
