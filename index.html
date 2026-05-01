@@ -196,6 +196,8 @@ window.refreshLayerVisibility = function() {
   });
 };
 
+var elevCache = {};
+
 async function loadData() {
   if (loading) return;
   var bounds = map.getBounds();
@@ -213,10 +215,12 @@ async function loadData() {
   document.getElementById('loading').classList.remove('hidden');
 
   try {
-    var url = API + '/trails/segments?minlat=' + minlat.toFixed(5) + '&maxlat=' + maxlat.toFixed(5) + '&minlon=' + minlon.toFixed(5) + '&maxlon=' + maxlon.toFixed(5) + '&limit=2000';
-    var res = await fetch(url);
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    var segments = await res.json();
+    var segUrl = API + '/trails/segments?minlat=' + minlat.toFixed(5) + '&maxlat=' + maxlat.toFixed(5) + '&minlon=' + minlon.toFixed(5) + '&maxlon=' + maxlon.toFixed(5) + '&limit=2000';
+    var elevUrl = API + '/trails/elevations?minlat=' + minlat.toFixed(5) + '&maxlat=' + maxlat.toFixed(5) + '&minlon=' + minlon.toFixed(5) + '&maxlon=' + maxlon.toFixed(5);
+    var [segRes, elevRes] = await Promise.all([fetch(segUrl), fetch(elevUrl)]);
+    if (!segRes.ok) throw new Error('HTTP ' + segRes.status);
+    var segments = await segRes.json();
+    if (elevRes.ok) elevCache = await elevRes.json();
     renderSegments(segments);
   } catch (e) {
     console.error(e);
@@ -258,10 +262,18 @@ function renderSegments(segments) {
       var sacKey = sac ? sac.key : '_no_sac_';
       allNamedLines.push({ line: line, sacKey: sacKey });
 
+      var elev = elevCache[s.name] || null;
       var popupHtml = '<div class="popup-name">' + esc(s.name) + '</div>';
       popupHtml += '<div class="popup-meta">' + esc(s.trail_type || '') + (s.length_km ? ' · ' + s.length_km.toFixed(2) + ' km' : '') + '</div>';
+      if (elev) {
+        popupHtml += '<div class="popup-meta">⬆ ' + elev.gain + 'm gain · ' + elev.min + '–' + elev.max + 'm</div>';
+      }
       if (sac) {
         popupHtml += '<div class="popup-diff ' + sac.cls + '">' + esc(sac.label) + '</div>';
+      }
+      if (elev && elev.difficulty !== 'easy') {
+        var dc = {moderate:'#eab308',hard:'#ea580c',expert:'#dc2626'}[elev.difficulty] || '#666';
+        popupHtml += '<div class="popup-diff" style="background:' + dc + '">' + esc(elev.difficulty.charAt(0).toUpperCase() + elev.difficulty.slice(1)) + '</div>';
       }
       line.bindPopup(popupHtml);
       line.on('mouseover', function() { line.setStyle({ weight: 5, opacity: 1 }); });
